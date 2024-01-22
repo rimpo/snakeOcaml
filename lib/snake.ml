@@ -9,6 +9,7 @@ type direction =
 type health =
   | Dead
   | Alive
+  | Pause
 
 type board_element =
   | Empty

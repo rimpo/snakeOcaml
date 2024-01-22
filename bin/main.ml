@@ -2,9 +2,42 @@
 
 open Snake
 
-let width = 50
-let height = 50
+let width = 40
+let height = 40
 let cell_size = 10
+
+let color_border sn =
+  let open Raylib in
+  match sn.h with
+  | Dead -> Color.red
+  | Alive -> Color.gray
+  | Pause -> Color.blue
+;;
+
+let draw_game bo sn =
+  let open Raylib in
+  (* draw score *)
+  draw_text
+    (string_of_int bo.c)
+    ((width * cell_size) + (2 * cell_size) - 40)
+    15
+    20
+    Color.yellow;
+  clear_board bo;
+  place_snake bo !sn;
+  place_food bo;
+  (* draw food & snake *)
+  for i = 0 to (width * height) - 1 do
+    match bo.data.(i) with
+    | Empty -> ()
+    | Food ->
+      let x, y = get_position i width in
+      draw_rectangle ((x * cell_size) + 10) ((y * cell_size) + 10) 10 10 Color.red
+    | Snake ->
+      let x, y = get_position i width in
+      draw_rectangle ((x * cell_size) + 10) ((y * cell_size) + 10) 10 10 Color.green
+  done
+;;
 
 let setup width height =
   Raylib.init_window
@@ -31,13 +64,26 @@ let rec loop bo sn =
     match !sn.h with
     | Dead ->
       begin_drawing ();
-      draw_text "DEAD !!" 200 200 20 Color.red;
-      draw_text "Press Space to Restart" 120 230 20 Color.red;
+      draw_rectangle_lines 10 10 (width * cell_size) (height * cell_size) Color.red;
+      draw_game bo sn;
+      draw_text "DEAD !!" 180 180 20 Color.red;
+      draw_text "Press Space to Restart" 100 200 20 Color.red;
       end_drawing ();
       if is_key_down Key.Space
       then loop (make_board width height (make_food width height)) (ref (make_snake ()))
       else loop bo sn
+    | Pause ->
+      if is_key_released Key.Space then sn := { pos = !sn.pos; d = !sn.d; h = Alive };
+      begin_drawing ();
+      clear_background Color.black;
+      draw_rectangle_lines 10 10 (width * cell_size) (height * cell_size) Color.blue;
+      draw_game bo sn;
+      draw_text "Paused !!" 180 180 20 Color.blue;
+      draw_text "Press Space to Start" 100 200 20 Color.blue;
+      end_drawing ();
+      loop bo sn
     | Alive ->
+      if is_key_released Key.Space then sn := { pos = !sn.pos; d = !sn.d; h = Pause };
       if is_key_down Key.Down && !sn.d != Up
       then sn := { pos = !sn.pos; d = Down; h = !sn.h };
       if is_key_down Key.Up && !sn.d != Down
@@ -48,26 +94,9 @@ let rec loop bo sn =
       then sn := { pos = !sn.pos; d = Left; h = !sn.h };
       begin_drawing ();
       clear_background Color.black;
+      (* draw boundary rectangle *)
       draw_rectangle_lines 10 10 (width * cell_size) (height * cell_size) Color.gray;
-      draw_text
-        (string_of_int bo.c)
-        ((width * cell_size) + (2 * cell_size) - 40)
-        15
-        20
-        Color.yellow;
-      clear_board bo;
-      place_snake bo !sn;
-      place_food bo;
-      for i = 0 to (width * height) - 1 do
-        match bo.data.(i) with
-        | Empty -> ()
-        | Food ->
-          let x, y = get_position i width in
-          draw_rectangle ((x * cell_size) + 10) ((y * cell_size) + 10) 10 10 Color.red
-        | Snake ->
-          let x, y = get_position i width in
-          draw_rectangle ((x * cell_size) + 10) ((y * cell_size) + 10) 10 10 Color.green
-      done;
+      draw_game bo sn;
       end_drawing ();
       let sn = move bo !sn in
       loop bo (ref sn)
